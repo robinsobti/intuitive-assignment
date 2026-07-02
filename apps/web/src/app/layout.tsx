@@ -4,7 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Infra Change Reviewer",
-  description: "Review Terraform plan JSON and surface infrastructure risk findings."
+  description:
+    "Review Terraform plan JSON and surface infrastructure risk findings."
 };
 
 type RootLayoutProps = {
