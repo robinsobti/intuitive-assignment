@@ -63,6 +63,20 @@ export async function deleteRun(runId: string): Promise<void> {
   });
 }
 
+export function getApiErrorMessage(error: unknown) {
+  if (error instanceof ApiClientError) {
+    return error.code === undefined
+      ? error.message
+      : `${error.code}: ${error.message}`;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "An unknown error occurred.";
+}
+
 async function requestJson<T>(
   path: string,
   init: RequestInit = {}

@@ -57,6 +57,21 @@ code {
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+a {
+  color: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .workspace {
   min-height: 100vh;
   width: min(1180px, 100%);
@@ -122,11 +137,15 @@ code {
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 40px;
   border: 1px solid transparent;
   border-radius: 7px;
   padding: 0 14px;
   font-weight: 700;
+  text-decoration: none;
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -168,6 +187,112 @@ code {
   border-color: transparent;
   background: transparent;
   color: var(--danger);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel-heading h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.panel-heading__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.new-run-form {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--text);
+}
+
+.field input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.field textarea {
+  min-height: 340px;
+  resize: vertical;
+  padding: 12px;
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--info);
+  outline: 3px solid rgba(36, 87, 166, 0.18);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #8a96a8;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.form-actions__submit {
+  margin-left: auto;
+}
+
+.form-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .intro-section {
@@ -308,6 +433,15 @@ code {
   margin: 0;
   color: var(--text);
   font-size: 1rem;
+}
+
+.run-item h3 a {
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+.run-item h3 a:hover {
+  text-decoration-color: currentColor;
 }
 
 .run-item p {
@@ -454,6 +588,13 @@ code {
   }
 }
 
+@media (min-width: 980px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(440px, 0.92fr) minmax(0, 1.08fr);
+    align-items: start;
+  }
+}
+
 @media (max-width: 760px) {
   .workspace {
     padding: 20px 14px 34px;
@@ -461,6 +602,7 @@ code {
 
   .app-header,
   .section-heading,
+  .panel-heading,
   .empty-state,
   .error-callout {
     align-items: stretch;
@@ -471,10 +613,25 @@ code {
     justify-content: stretch;
   }
 
+  .panel {
+    padding: 16px;
+  }
+
   .header-actions .button,
+  .panel-heading__actions .button,
+  .form-actions .button,
   .empty-state__action .button,
   .error-callout__action .button {
     width: 100%;
+  }
+
+  .panel-heading__actions,
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .form-actions__submit {
+    margin-left: 0;
   }
 
   .intro-copy h2 {
