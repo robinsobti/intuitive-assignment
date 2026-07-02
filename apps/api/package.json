@@ -9,6 +9,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@infra-review/shared": "workspace:*",
     "fastify": "^5.4.0"
   },
   "devDependencies": {
