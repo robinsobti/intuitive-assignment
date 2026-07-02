@@ -1,0 +1,161 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.8.5",
+  "resource_changes": [
+    {
+      "address": "aws_instance.web",
+      "type": "aws_instance",
+      "name": "web",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "instance_type": "t3.medium",
+          "tags": {
+            "owner": "platform",
+            "service": "checkout",
+            "environment": "prod"
+          }
+        },
+        "after": {
+          "instance_type": "t3.large",
+          "tags": {
+            "owner": "platform",
+            "service": "checkout",
+            "environment": "prod"
+          }
+        }
+      }
+    },
+    {
+      "address": "aws_db_instance.primary",
+      "type": "aws_db_instance",
+      "name": "primary",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "engine": "postgres",
+          "tags_all": {
+            "owner": "database",
+            "service": "checkout",
+            "environment": "production"
+          }
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "aws_security_group.admin",
+      "type": "aws_security_group",
+      "name": "admin",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "admin-public",
+          "ingress": [
+            {
+              "protocol": "tcp",
+              "from_port": 22,
+              "to_port": 22,
+              "cidr_blocks": ["0.0.0.0/0"],
+              "ipv6_cidr_blocks": []
+            }
+          ],
+          "tags": {
+            "owner": "security",
+            "service": "network",
+            "environment": "prod"
+          }
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_acl.assets",
+      "type": "aws_s3_bucket_acl",
+      "name": "assets",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "acl": "private",
+          "tags": {
+            "owner": "platform",
+            "service": "assets",
+            "environment": "dev"
+          }
+        },
+        "after": {
+          "acl": "public-read",
+          "tags": {
+            "owner": "platform",
+            "service": "assets",
+            "environment": "dev"
+          }
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_public_access_block.assets",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "assets",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "block_public_acls": true,
+          "block_public_policy": true,
+          "ignore_public_acls": true,
+          "restrict_public_buckets": true
+        },
+        "after": {
+          "block_public_acls": false,
+          "block_public_policy": true,
+          "ignore_public_acls": false,
+          "restrict_public_buckets": true,
+          "tags": {
+            "owner": "platform",
+            "service": "assets",
+            "environment": "dev"
+          }
+        }
+      }
+    },
+    {
+      "address": "aws_iam_policy.power_user",
+      "type": "aws_iam_policy",
+      "name": "power_user",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"iam:*\",\"s3:GetObject\"],\"Resource\":\"*\"}]}",
+          "tags": {
+            "owner": "security",
+            "service": "iam",
+            "environment": "dev"
+          }
+        }
+      }
+    },
+    {
+      "address": "aws_instance.untagged_worker",
+      "type": "aws_instance",
+      "name": "untagged_worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "instance_type": "t3.micro",
+          "tags": {
+            "owner": "platform"
+          }
+        }
+      }
+    }
+  ]
+}
