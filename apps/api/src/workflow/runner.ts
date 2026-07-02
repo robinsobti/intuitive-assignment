@@ -6,6 +6,13 @@ import type {
   RunStatus,
   WorkflowStep
 } from "@infra-review/shared";
+import {
+  TerraformPlanError,
+  parsePlanInput,
+  summarizeResourceChanges,
+  type TerraformChangeSummary,
+  type TerraformPlan
+} from "../analyzer/terraformPlan.js";
 import { nowIso } from "../lib/time.js";
 import type { RunStore, StoredRunInput } from "../storage/types.js";
 
@@ -25,6 +32,8 @@ type WorkflowContext = {
   runId: string;
   runStore: RunStore;
   input: StoredRunInput;
+  plan?: TerraformPlan;
+  summary?: TerraformChangeSummary;
 };
 
 export type StartReviewWorkflowOptions = {
@@ -49,13 +58,18 @@ const workflowSteps: WorkflowStepDefinition[] = [
     status: "RUNNING",
     message: "Validating Terraform plan input.",
     delayMs: 250,
-    run: ({ input }) => validatePlanJson(input.planJson)
+    run: (context) => {
+      context.plan = parsePlanInput(context.input.planJson);
+    }
   },
   {
     step: "PARSING_CHANGES",
     status: "RUNNING",
     message: "Parsing resource changes.",
-    delayMs: 250
+    delayMs: 250,
+    run: (context) => {
+      context.summary = summarizeResourceChanges(getPlan(context));
+    }
   },
   {
     step: "RUNNING_POLICY_CHECKS",
@@ -72,9 +86,15 @@ const workflowSteps: WorkflowStepDefinition[] = [
   {
     step: "WRITING_REPORT",
     status: "RUNNING",
-    message: "Writing placeholder review report.",
+    message: "Writing review report.",
     delayMs: 250,
-    run: ({ runId, runStore }) => savePlaceholderResult(runStore, runId)
+    run: ({ runId, runStore, summary }) => {
+      if (summary === undefined) {
+        throw new Error("Terraform change summary was not available.");
+      }
+
+      return saveResult(runStore, runId, summary);
+    }
   },
   {
     step: "COMPLETED",
@@ -171,35 +191,76 @@ async function failRun(runStore: RunStore, runId: string, error: unknown) {
   } satisfies RunEvent);
 }
 
-function validatePlanJson(planJson: unknown) {
-  if (typeof planJson !== "object" || planJson === null || Array.isArray(planJson)) {
-    throw new Error("Terraform plan JSON must be an object.");
+function getPlan(context: WorkflowContext) {
+  if (context.plan === undefined) {
+    throw new Error("Terraform plan was not available.");
   }
+
+  return context.plan;
 }
 
-async function savePlaceholderResult(runStore: RunStore, runId: string) {
+async function saveResult(
+  runStore: RunStore,
+  runId: string,
+  summary: TerraformChangeSummary
+) {
   await runStore.saveResult({
     runId,
     recommendation: "REVIEW",
     summary: {
-      total: 0,
-      create: 0,
-      update: 0,
-      delete: 0,
-      replace: 0,
+      total: summary.total,
+      create: summary.create,
+      update: summary.update,
+      delete: summary.delete,
+      replace: summary.replace,
       read: 0,
-      noOp: 0
+      noOp: summary.noOp
     },
-    changes: [],
+    changes: summary.changes.map((change) => ({
+      address: change.address,
+      action: toRunResultAction(change.action),
+      type: change.type,
+      name: change.name,
+      providerName: change.providerName,
+      before: change.before,
+      after: change.after,
+      metadata: {
+        terraformActions: change.actions,
+        normalizedAction: change.action,
+        tags: change.tags
+      }
+    })),
     findings: [],
     policyResults: [],
     generatedAt: nowIso()
   } satisfies RunResult);
 }
 
+function toRunResultAction(
+  action: TerraformChangeSummary["changes"][number]["action"]
+) {
+  switch (action) {
+    case "create":
+      return "CREATE";
+    case "update":
+      return "UPDATE";
+    case "delete":
+      return "DELETE";
+    case "replace":
+      return "REPLACE";
+    case "no-op":
+    case "unknown":
+      return "NO_OP";
+  }
+}
+
 function serializeError(error: unknown) {
   if (error instanceof Error) {
+    const code =
+      error instanceof TerraformPlanError ? { code: error.code } : {};
+
     return {
+      ...code,
       name: error.name,
       message: error.message
     };
