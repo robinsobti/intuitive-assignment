@@ -19,6 +19,10 @@ import {
   type PolicyFinding,
   type PolicyResult
 } from "../analyzer/policies.js";
+import {
+  calculateRisk,
+  type RiskCalculation
+} from "../analyzer/risk.js";
 import { nowIso } from "../lib/time.js";
 import type { RunStore, StoredRunInput } from "../storage/types.js";
 
@@ -41,6 +45,8 @@ type WorkflowContext = {
   plan?: TerraformPlan;
   summary?: TerraformChangeSummary;
   policyResults?: PolicyResult[];
+  policyFindings?: PolicyFinding[];
+  risk?: RiskCalculation;
 };
 
 export type StartReviewWorkflowOptions = {
@@ -91,19 +97,25 @@ const workflowSteps: WorkflowStepDefinition[] = [
     step: "CALCULATING_RISK",
     status: "RUNNING",
     message: "Calculating review risk.",
-    delayMs: 250
+    delayMs: 250,
+    run: (context) => {
+      context.policyFindings = collectPolicyFindings(getPolicyResults(context));
+      context.risk = calculateRisk(getSummary(context), context.policyFindings);
+    }
   },
   {
     step: "WRITING_REPORT",
     status: "RUNNING",
     message: "Writing review report.",
     delayMs: 250,
-    run: ({ runId, runStore, summary, policyResults }) => {
+    run: ({ runId, runStore, summary, policyResults, policyFindings, risk }) => {
       return saveResult(
         runStore,
         runId,
         getDefinedSummary(summary),
-        policyResults ?? []
+        getPolicyResults({ policyResults }),
+        getPolicyFindings({ policyFindings }),
+        getRisk({ risk })
       );
     }
   },
@@ -214,6 +226,34 @@ function getSummary(context: WorkflowContext) {
   return getDefinedSummary(context.summary);
 }
 
+function getPolicyResults({
+  policyResults
+}: Pick<WorkflowContext, "policyResults">) {
+  if (policyResults === undefined) {
+    throw new Error("Policy results were not available.");
+  }
+
+  return policyResults;
+}
+
+function getPolicyFindings({
+  policyFindings
+}: Pick<WorkflowContext, "policyFindings">) {
+  if (policyFindings === undefined) {
+    throw new Error("Policy findings were not available.");
+  }
+
+  return policyFindings;
+}
+
+function getRisk({ risk }: Pick<WorkflowContext, "risk">) {
+  if (risk === undefined) {
+    throw new Error("Risk calculation was not available.");
+  }
+
+  return risk;
+}
+
 function getDefinedSummary(summary: TerraformChangeSummary | undefined) {
   if (summary === undefined) {
     throw new Error("Terraform change summary was not available.");
@@ -226,13 +266,16 @@ async function saveResult(
   runStore: RunStore,
   runId: string,
   summary: TerraformChangeSummary,
-  policyResults: PolicyResult[]
+  policyResults: PolicyResult[],
+  policyFindings: PolicyFinding[],
+  risk: RiskCalculation
 ) {
-  const policyFindings = collectPolicyFindings(policyResults);
-
   await runStore.saveResult({
     runId,
-    recommendation: recommendationForFindings(policyFindings),
+    recommendation: risk.recommendation,
+    riskScore: risk.riskScore,
+    riskLevel: risk.riskLevel,
+    severityCounts: risk.severityCounts,
     summary: {
       total: summary.total,
       create: summary.create,
@@ -260,14 +303,6 @@ async function saveResult(
     policyResults,
     generatedAt: nowIso()
   } satisfies RunResult);
-}
-
-function recommendationForFindings(findings: PolicyFinding[]) {
-  if (findings.some((finding) => finding.severity === "CRITICAL")) {
-    return "BLOCK";
-  }
-
-  return findings.length > 0 ? "REVIEW" : "APPROVE";
 }
 
 function toRunResultAction(

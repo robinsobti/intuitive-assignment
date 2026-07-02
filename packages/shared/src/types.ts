@@ -13,18 +13,21 @@ import type {
   ResourceChangeActionSchema,
   ResourceChangeSchema,
   ResourceChangeSummarySchema,
+  RiskLevelSchema,
   RunErrorSchema,
   RunEventSchema,
   RunResultSchema,
   RunSchema,
   RunStatusSchema,
   SeveritySchema,
+  SeverityCountsSchema,
   WorkflowStepSchema
 } from "./schemas.js";
 
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
+export type RiskLevel = z.infer<typeof RiskLevelSchema>;
 export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type CreateRunSource = z.infer<typeof CreateRunSourceSchema>;
 export type ResourceChangeAction = z.infer<typeof ResourceChangeActionSchema>;
@@ -36,6 +39,7 @@ export type PolicyResult = z.infer<typeof PolicyResultSchema>;
 export type ResourceChangeSummary = z.infer<
   typeof ResourceChangeSummarySchema
 >;
+export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
 export type ResourceChange = z.infer<typeof ResourceChangeSchema>;
 export type RunResult = z.infer<typeof RunResultSchema>;
 export type RunError = z.infer<typeof RunErrorSchema>;

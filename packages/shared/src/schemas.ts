@@ -23,6 +23,8 @@ export const WorkflowStepSchema = z.enum([
 
 export const SeveritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 
+export const RiskLevelSchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
+
 export const RecommendationSchema = z.enum(["APPROVE", "REVIEW", "BLOCK"]);
 
 export const CreateRunSourceSchema = z.enum(["paste", "upload", "sample"]);
@@ -90,6 +92,13 @@ export const ResourceChangeSummarySchema = z.object({
   noOp: z.number().int().nonnegative()
 });
 
+export const SeverityCountsSchema = z.object({
+  LOW: z.number().int().nonnegative(),
+  MEDIUM: z.number().int().nonnegative(),
+  HIGH: z.number().int().nonnegative(),
+  CRITICAL: z.number().int().nonnegative()
+});
+
 export const ResourceChangeSchema = z.object({
   address: z.string(),
   action: ResourceChangeActionSchema,
@@ -105,6 +114,9 @@ export const ResourceChangeSchema = z.object({
 export const RunResultSchema = z.object({
   runId: z.string(),
   recommendation: RecommendationSchema,
+  riskScore: z.number().int().min(0).max(100),
+  riskLevel: RiskLevelSchema,
+  severityCounts: SeverityCountsSchema,
   summary: ResourceChangeSummarySchema,
   changes: z.array(ResourceChangeSchema),
   findings: z.array(FindingSchema),
