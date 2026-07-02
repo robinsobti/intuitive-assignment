@@ -1,0 +1,16 @@
+{
+  "name": "infra-change-reviewer",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @infra-review/api --filter @infra-review/web run dev",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "build": "pnpm --filter @infra-review/web run build",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run build"
+  }
+}
