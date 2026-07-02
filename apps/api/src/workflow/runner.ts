@@ -13,6 +13,12 @@ import {
   type TerraformChangeSummary,
   type TerraformPlan
 } from "../analyzer/terraformPlan.js";
+import {
+  collectPolicyFindings,
+  runPolicyChecks,
+  type PolicyFinding,
+  type PolicyResult
+} from "../analyzer/policies.js";
 import { nowIso } from "../lib/time.js";
 import type { RunStore, StoredRunInput } from "../storage/types.js";
 
@@ -34,6 +40,7 @@ type WorkflowContext = {
   input: StoredRunInput;
   plan?: TerraformPlan;
   summary?: TerraformChangeSummary;
+  policyResults?: PolicyResult[];
 };
 
 export type StartReviewWorkflowOptions = {
@@ -75,7 +82,10 @@ const workflowSteps: WorkflowStepDefinition[] = [
     step: "RUNNING_POLICY_CHECKS",
     status: "RUNNING",
     message: "Running policy checks.",
-    delayMs: 250
+    delayMs: 250,
+    run: (context) => {
+      context.policyResults = runPolicyChecks(getSummary(context));
+    }
   },
   {
     step: "CALCULATING_RISK",
@@ -88,12 +98,13 @@ const workflowSteps: WorkflowStepDefinition[] = [
     status: "RUNNING",
     message: "Writing review report.",
     delayMs: 250,
-    run: ({ runId, runStore, summary }) => {
-      if (summary === undefined) {
-        throw new Error("Terraform change summary was not available.");
-      }
-
-      return saveResult(runStore, runId, summary);
+    run: ({ runId, runStore, summary, policyResults }) => {
+      return saveResult(
+        runStore,
+        runId,
+        getDefinedSummary(summary),
+        policyResults ?? []
+      );
     }
   },
   {
@@ -199,14 +210,29 @@ function getPlan(context: WorkflowContext) {
   return context.plan;
 }
 
+function getSummary(context: WorkflowContext) {
+  return getDefinedSummary(context.summary);
+}
+
+function getDefinedSummary(summary: TerraformChangeSummary | undefined) {
+  if (summary === undefined) {
+    throw new Error("Terraform change summary was not available.");
+  }
+
+  return summary;
+}
+
 async function saveResult(
   runStore: RunStore,
   runId: string,
-  summary: TerraformChangeSummary
+  summary: TerraformChangeSummary,
+  policyResults: PolicyResult[]
 ) {
+  const policyFindings = collectPolicyFindings(policyResults);
+
   await runStore.saveResult({
     runId,
-    recommendation: "REVIEW",
+    recommendation: recommendationForFindings(policyFindings),
     summary: {
       total: summary.total,
       create: summary.create,
@@ -230,10 +256,18 @@ async function saveResult(
         tags: change.tags
       }
     })),
-    findings: [],
-    policyResults: [],
+    findings: policyFindings,
+    policyResults,
     generatedAt: nowIso()
   } satisfies RunResult);
+}
+
+function recommendationForFindings(findings: PolicyFinding[]) {
+  if (findings.some((finding) => finding.severity === "CRITICAL")) {
+    return "BLOCK";
+  }
+
+  return findings.length > 0 ? "REVIEW" : "APPROVE";
 }
 
 function toRunResultAction(
