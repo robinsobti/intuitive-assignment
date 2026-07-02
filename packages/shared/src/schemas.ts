@@ -142,6 +142,7 @@ export const GetRunEventsResponseSchema = z.object({
 });
 
 export const GetRunResultResponseSchema = z.object({
+  status: RunStatusSchema,
   result: RunResultSchema.nullable(),
   error: RunErrorSchema.optional()
 });

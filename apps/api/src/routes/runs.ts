@@ -13,6 +13,10 @@ import {
   type ErrorResponse
 } from "../lib/errors.js";
 import type { RunStore } from "../storage/types.js";
+import {
+  startReviewWorkflow,
+  type StartReviewWorkflow
+} from "../workflow/runner.js";
 
 type RunParams = {
   runId: string;
@@ -20,6 +24,7 @@ type RunParams = {
 
 type RunRoutesOptions = {
   runStore: RunStore;
+  startWorkflow?: StartReviewWorkflow;
 };
 
 function sendRunNotFound(reply: FastifyReply, runId: string) {
@@ -30,7 +35,7 @@ function sendRunNotFound(reply: FastifyReply, runId: string) {
 
 export const registerRunRoutes: FastifyPluginAsync<RunRoutesOptions> = async (
   app,
-  { runStore }
+  { runStore, startWorkflow = startReviewWorkflow }
 ) => {
   app.get("/", async (): Promise<ListRunsResponse> => ({
     runs: await runStore.listRuns()
@@ -46,6 +51,9 @@ export const registerRunRoutes: FastifyPluginAsync<RunRoutesOptions> = async (
     }
 
     const run = await runStore.createRun(parsedRequest.data);
+    setImmediate(() => {
+      void startWorkflow({ runId: run.id, runStore, logger: app.log });
+    });
 
     return reply.code(202).send({ run } satisfies CreateRunResponse);
   });
@@ -85,7 +93,10 @@ export const registerRunRoutes: FastifyPluginAsync<RunRoutesOptions> = async (
         return sendRunNotFound(reply, request.params.runId);
       }
 
-      return { result: await runStore.getResult(run.id) };
+      return {
+        status: run.status,
+        result: await runStore.getResult(run.id)
+      };
     }
   );
 
