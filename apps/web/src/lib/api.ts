@@ -70,6 +70,10 @@ export function getApiErrorMessage(error: unknown) {
       : `${error.code}: ${error.message}`;
   }
 
+  if (error instanceof TypeError) {
+    return `Could not reach the API at ${API_BASE_URL}. Make sure the API server is running and accessible.`;
+  }
+
   if (error instanceof Error) {
     return error.message;
   }

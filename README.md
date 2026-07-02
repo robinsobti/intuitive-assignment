@@ -92,7 +92,7 @@ Base URL defaults to `http://localhost:4000`.
 | `GET` | `/runs` | List persisted runs without raw input. |
 | `GET` | `/runs/:runId` | Get a single run by ID. |
 | `GET` | `/runs/:runId/events` | Get workflow events for a run. |
-| `GET` | `/runs/:runId/result` | Get run status plus result when available. |
+| `GET` | `/runs/:runId/result` | Get run status plus result when available, or a structured error for failed runs. |
 | `DELETE` | `/runs/:runId` | Delete run state, events, result, and stored input. |
 
 Create request shape:
@@ -136,8 +136,10 @@ workflow:
 7. `COMPLETED`
 
 If a step throws, the run is marked `FAILED`, `currentStep` is set to `FAILED`,
-and an error event is appended. The API process should not crash on workflow
-errors.
+and a clear error event is appended. Failed result responses include a
+structured error such as `INVALID_JSON` or `INVALID_TERRAFORM_PLAN` when the
+input cannot be parsed as a Terraform plan. The API process should not crash on
+workflow errors, and API error responses do not include raw stack traces.
 
 ## Analyzer And Risk Model
 

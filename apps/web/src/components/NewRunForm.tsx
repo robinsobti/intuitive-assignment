@@ -20,6 +20,10 @@ export function NewRunForm() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleLoadSample() {
+    if (isSubmitting) {
+      return;
+    }
+
     setIsLoadingSample(true);
     setError(null);
 
@@ -41,6 +45,11 @@ export function NewRunForm() {
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    if (isSubmitting || isLoadingSample) {
+      event.target.value = "";
+      return;
+    }
+
     const file = event.target.files?.[0];
 
     if (file === undefined) {
@@ -131,11 +140,13 @@ export function NewRunForm() {
           ref={fileInputRef}
           accept=".json,application/json"
           className="visually-hidden"
+          disabled={isSubmitting || isLoadingSample}
           onChange={(event) => void handleFileChange(event)}
           type="file"
         />
         <button
           className="button button--secondary"
+          disabled={isSubmitting || isLoadingSample}
           onClick={() => fileInputRef.current?.click()}
           type="button"
         >
@@ -143,7 +154,7 @@ export function NewRunForm() {
         </button>
         <button
           className="button button--secondary"
-          disabled={isLoadingSample}
+          disabled={isSubmitting || isLoadingSample}
           onClick={() => void handleLoadSample()}
           type="button"
         >
@@ -151,7 +162,7 @@ export function NewRunForm() {
         </button>
         <button
           className="button button--primary form-actions__submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoadingSample}
           type="submit"
         >
           {isSubmitting ? "Starting review" : "Start Review"}

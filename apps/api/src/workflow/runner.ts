@@ -7,7 +7,6 @@ import type {
   WorkflowStep
 } from "@infra-review/shared";
 import {
-  TerraformPlanError,
   parsePlanInput,
   summarizeResourceChanges,
   type TerraformChangeSummary,
@@ -23,6 +22,7 @@ import {
   calculateRisk,
   type RiskCalculation
 } from "../analyzer/risk.js";
+import { workflowErrorFromUnknown } from "../lib/errors.js";
 import { nowIso } from "../lib/time.js";
 import type { RunStore, StoredRunInput } from "../storage/types.js";
 
@@ -197,7 +197,11 @@ async function transitionRun(
 
 async function failRun(runStore: RunStore, runId: string, error: unknown) {
   const now = nowIso();
-  const serializedError = serializeError(error);
+  const failedRun = await runStore.getRun(runId);
+  const serializedError = workflowErrorFromUnknown(
+    error,
+    failedRun?.currentStep
+  );
   await runStore.updateRun(runId, {
     status: "FAILED",
     currentStep: "FAILED",
@@ -208,7 +212,7 @@ async function failRun(runStore: RunStore, runId: string, error: unknown) {
     runId,
     step: "FAILED",
     status: "FAILED",
-    message: "ERROR: Review workflow failed.",
+    message: `ERROR: ${serializedError.code}: ${serializedError.message}`,
     createdAt: now,
     metadata: { error: serializedError }
   } satisfies RunEvent);
@@ -321,21 +325,6 @@ function toRunResultAction(
     case "unknown":
       return "NO_OP";
   }
-}
-
-function serializeError(error: unknown) {
-  if (error instanceof Error) {
-    const code =
-      error instanceof TerraformPlanError ? { code: error.code } : {};
-
-    return {
-      ...code,
-      name: error.name,
-      message: error.message
-    };
-  }
-
-  return { message: String(error) };
 }
 
 function sleep(ms: number) {

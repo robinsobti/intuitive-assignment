@@ -8,6 +8,7 @@ import {
   type ListRunsResponse
 } from "@infra-review/shared";
 import {
+  failedRunErrorFromEvents,
   invalidCreateRunRequestError,
   runNotFoundError,
   type ErrorResponse
@@ -95,7 +96,10 @@ export const registerRunRoutes: FastifyPluginAsync<RunRoutesOptions> = async (
 
       return {
         status: run.status,
-        result: await runStore.getResult(run.id)
+        result: await runStore.getResult(run.id),
+        ...(run.status === "FAILED"
+          ? { error: failedRunErrorFromEvents(await runStore.getEvents(run.id)) }
+          : {})
       };
     }
   );

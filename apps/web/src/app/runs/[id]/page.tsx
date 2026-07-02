@@ -122,10 +122,11 @@ export default function RunDetailPage() {
           action={
             <button
               className="button button--secondary"
+              disabled={isLoading}
               onClick={() => void loadRunState()}
               type="button"
             >
-              Retry
+              {isLoading ? "Retrying" : "Retry"}
             </button>
           }
           message={error}
