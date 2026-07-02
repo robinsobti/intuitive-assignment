@@ -1,62 +1,51 @@
-import { randomUUID } from "node:crypto";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import {
   CreateRunRequestSchema,
   type CreateRunResponse,
   type GetRunEventsResponse,
   type GetRunResultResponse,
   type GetRunResponse,
-  type ListRunsResponse,
-  type Run,
-  type RunError
+  type ListRunsResponse
 } from "@infra-review/shared";
+import {
+  invalidCreateRunRequestError,
+  runNotFoundError,
+  type ErrorResponse
+} from "../lib/errors.js";
+import type { RunStore } from "../storage/types.js";
 
 type RunParams = {
   runId: string;
 };
 
-type ErrorResponse = {
-  error: RunError;
+type RunRoutesOptions = {
+  runStore: RunStore;
 };
 
-const runs: Run[] = [];
-
 function sendRunNotFound(reply: FastifyReply, runId: string) {
-  const error = {
-    code: "RUN_NOT_FOUND",
-    message: `Run '${runId}' was not found.`,
-    details: { runId }
-  } satisfies RunError;
-
-  return reply.code(404).send({ error } satisfies ErrorResponse);
+  return reply
+    .code(404)
+    .send({ error: runNotFoundError(runId) } satisfies ErrorResponse);
 }
 
-export async function registerRunRoutes(app: FastifyInstance) {
-  app.get("/", async (): Promise<ListRunsResponse> => ({ runs }));
+export const registerRunRoutes: FastifyPluginAsync<RunRoutesOptions> = async (
+  app,
+  { runStore }
+) => {
+  app.get("/", async (): Promise<ListRunsResponse> => ({
+    runs: await runStore.listRuns()
+  }));
 
   app.post("/", async (request, reply) => {
     const parsedRequest = CreateRunRequestSchema.safeParse(request.body);
 
     if (!parsedRequest.success) {
-      const error = {
-        code: "INVALID_CREATE_RUN_REQUEST",
-        message: "Request body did not match the create run contract.",
-        details: { issues: parsedRequest.error.issues }
-      } satisfies RunError;
+      const error = invalidCreateRunRequestError(parsedRequest.error.issues);
 
       return reply.code(400).send({ error } satisfies ErrorResponse);
     }
 
-    const now = new Date().toISOString();
-    const run = {
-      id: randomUUID(),
-      name: parsedRequest.data.name,
-      source: parsedRequest.data.source,
-      status: "QUEUED",
-      currentStep: "RECEIVED_INPUT",
-      createdAt: now,
-      updatedAt: now
-    } satisfies Run;
+    const run = await runStore.createRun(parsedRequest.data);
 
     return reply.code(202).send({ run } satisfies CreateRunResponse);
   });
@@ -64,21 +53,49 @@ export async function registerRunRoutes(app: FastifyInstance) {
   app.get<{ Params: RunParams }>(
     "/:runId",
     async (request, reply): Promise<GetRunResponse | undefined> => {
-      return sendRunNotFound(reply, request.params.runId);
+      const run = await runStore.getRun(request.params.runId);
+
+      if (run === null) {
+        return sendRunNotFound(reply, request.params.runId);
+      }
+
+      return { run };
     }
   );
 
   app.get<{ Params: RunParams }>(
     "/:runId/events",
     async (request, reply): Promise<GetRunEventsResponse | undefined> => {
-      return sendRunNotFound(reply, request.params.runId);
+      const run = await runStore.getRun(request.params.runId);
+
+      if (run === null) {
+        return sendRunNotFound(reply, request.params.runId);
+      }
+
+      return { events: await runStore.getEvents(run.id) };
     }
   );
 
   app.get<{ Params: RunParams }>(
     "/:runId/result",
     async (request, reply): Promise<GetRunResultResponse | undefined> => {
-      return sendRunNotFound(reply, request.params.runId);
+      const run = await runStore.getRun(request.params.runId);
+
+      if (run === null) {
+        return sendRunNotFound(reply, request.params.runId);
+      }
+
+      return { result: await runStore.getResult(run.id) };
     }
   );
-}
+
+  app.delete<{ Params: RunParams }>("/:runId", async (request, reply) => {
+    const deleted = await runStore.deleteRun(request.params.runId);
+
+    if (!deleted) {
+      return sendRunNotFound(reply, request.params.runId);
+    }
+
+    return reply.code(204).send();
+  });
+};
