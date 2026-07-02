@@ -1,5 +1,6 @@
 import type {
   Recommendation,
+  ResourceChangeAction,
   RiskLevel,
   RunStatus,
   Severity,
@@ -31,6 +32,15 @@ const runStatusLabels: Record<RunStatus, string> = {
   RUNNING: "Running",
   SUCCEEDED: "Succeeded",
   FAILED: "Failed"
+};
+
+const resourceChangeActionLabels: Record<ResourceChangeAction, string> = {
+  CREATE: "Create",
+  UPDATE: "Update",
+  DELETE: "Delete",
+  REPLACE: "Replace",
+  READ: "Read",
+  NO_OP: "No-op"
 };
 
 export function formatDateTime(value: string | undefined) {
@@ -73,6 +83,18 @@ export function formatWorkflowStep(value: WorkflowStep) {
   return value
     .toLowerCase()
     .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function formatResourceChangeAction(value: ResourceChangeAction) {
+  return resourceChangeActionLabels[value];
+}
+
+export function formatPolicyId(value: string) {
+  return value
+    .split("-")
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }

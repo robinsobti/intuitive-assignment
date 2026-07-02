@@ -7,12 +7,14 @@ import type {
   GetRunResultResponse,
   Run,
   RunEvent,
-  RunResult,
   RunStatus
 } from "@infra-review/shared";
 import { ErrorCallout } from "../../../components/ErrorCallout";
 import { EventTimeline } from "../../../components/EventTimeline";
+import { FindingsTable } from "../../../components/FindingsTable";
 import { ProgressStepper } from "../../../components/ProgressStepper";
+import { ResourceChangesTable } from "../../../components/ResourceChangesTable";
+import { RiskSummary } from "../../../components/RiskSummary";
 import {
   StatusBadge,
   type StatusBadgeTone
@@ -26,8 +28,6 @@ import {
 } from "../../../lib/api";
 import {
   formatDateTime,
-  formatRecommendation,
-  formatRiskLevel,
   formatRunStatus,
   formatWorkflowStep
 } from "../../../lib/formatting";
@@ -208,9 +208,39 @@ export default function RunDetailPage() {
             {result === null ? (
               <p className="muted-text">Result has not been written yet.</p>
             ) : (
-              <RunResultSummary result={result} />
+              <RiskSummary result={result} />
             )}
           </section>
+
+          {result === null ? null : (
+            <>
+              <section
+                className="panel detail-findings"
+                aria-labelledby="findings-heading"
+              >
+                <div className="panel-heading">
+                  <div>
+                    <p className="section-kicker">Policy findings</p>
+                    <h2 id="findings-heading">Findings</h2>
+                  </div>
+                </div>
+                <FindingsTable findings={result.findings} />
+              </section>
+
+              <section
+                className="panel detail-changes"
+                aria-labelledby="changes-heading"
+              >
+                <div className="panel-heading">
+                  <div>
+                    <p className="section-kicker">Terraform resources</p>
+                    <h2 id="changes-heading">Resource changes</h2>
+                  </div>
+                </div>
+                <ResourceChangesTable changes={result.changes} />
+              </section>
+            </>
+          )}
 
           <section className="panel detail-events" aria-labelledby="events-heading">
             <div className="panel-heading">
@@ -224,54 +254,6 @@ export default function RunDetailPage() {
         </div>
       )}
     </main>
-  );
-}
-
-function RunResultSummary({ result }: { result: RunResult }) {
-  return (
-    <div className="result-summary">
-      <div className="result-score">
-        <span>Risk score</span>
-        <strong>{result.riskScore}</strong>
-        <p>{formatRiskLevel(result.riskLevel)}</p>
-      </div>
-      <dl className="result-details">
-        <div>
-          <dt>Recommendation</dt>
-          <dd>{formatRecommendation(result.recommendation)}</dd>
-        </div>
-        <div>
-          <dt>Findings</dt>
-          <dd>{result.findings.length}</dd>
-        </div>
-        <div>
-          <dt>Changes</dt>
-          <dd>{result.summary.total}</dd>
-        </div>
-        <div>
-          <dt>Generated</dt>
-          <dd>{formatDateTime(result.generatedAt)}</dd>
-        </div>
-      </dl>
-      <dl className="severity-counts">
-        <div>
-          <dt>Critical</dt>
-          <dd>{result.severityCounts.CRITICAL}</dd>
-        </div>
-        <div>
-          <dt>High</dt>
-          <dd>{result.severityCounts.HIGH}</dd>
-        </div>
-        <div>
-          <dt>Medium</dt>
-          <dd>{result.severityCounts.MEDIUM}</dd>
-        </div>
-        <div>
-          <dt>Low</dt>
-          <dd>{result.severityCounts.LOW}</dd>
-        </div>
-      </dl>
-    </div>
   );
 }
 
